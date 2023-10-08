@@ -2,7 +2,7 @@
 
 This repository contains code and documentation for Wearable Alertness and Kinesis Equipment (W.A.K.E).
 
-**Team Members**: Jarod Marshel, Tony Fu, Chonghao Cai, Chenhan Dai, Alessandro Bifulco
+**Team Members**: Jarod Marshel, Chonghao Cai, Chenhan Dai, Alessandro Bifulco, Tony Fu
 
 ---
 
@@ -10,13 +10,21 @@ This repository contains code and documentation for Wearable Alertness and Kines
 
 Our team developed this project for the NeuroTEC x Synaptech 2023 Hackathon. The hackathon lasted three days and focused on neurotechnology prototypes. We used the MUSE 2 headband and the TENS 3000 unit. Our goal was to help people stay awake by detecting changes in brainwaves and stimulating the body.
 
-*Note: I wrote this documentation months after the event, so some details are missing.*
+*Note: We wrote this documentation months after the event, so some details are missing.*
 
 ![Hackathon Poster](./images/hackathon_poster.png)
 
-**Spoiler**: We didn't win the hackathon. The winning project, which also used a MUSE 2 headband and an Oculus Quest 3, stood out for its creative use of VR. Our project raised concerns about resembling a torture device, a critique we found reasonable.
+---
 
-[View Presentation Slides](https://prezi.com/view/d1VaiqtHbyYKQhuBqlw4/)
+## Results
+
+Our SVM trained using 20 seconds of eye open and eye close data (total 40 seconds) at the start of the program achieved a pretty responsive performance. The following plot shows the SVM's prediction vs. the state of the subject.
+
+![decision_plot](./images/decision_plot.gif)
+
+[View Presentation Slides](https://prezi.com/view/d1VaiqtHbyYKQhuBqlw4/): Credit to Jarod Marshel for making the slides.
+
+**Spoiler**: We didn't win the hackathon. The winning project, which also used a MUSE 2 headband and an Oculus Quest 3, stood out for its creative use of VR. Our project raised concerns about resembling a torture device, a critique we found reasonable.
 
 ---
 
@@ -44,11 +52,19 @@ You can buy it from the [TENS Pro Official Website](https://www.tenspros.com/ten
 
 The TENS 3000 only has manual dials for electrical intensity. We used an Arduino Uno and servo motors to turn these dials. We built a cardboard housing to maintain pressure on the dials.
 
+![servo_box_step1](./images/servo_box_step1.png)
+![servo_box_step2](./images/servo_box_step2.png)
+
+
+### Final Setup
+
+![total_setup](./images/total_setup.png)
+
 ---
 
 ## Software Details
 
-Please allow me to present this section in the form of a tutorial.
+Please allow us to present this section in the form of a tutorial.
 
 ### Step 1. Connecting to the MUSE 2
 
@@ -70,7 +86,7 @@ To connect to the MUSE 2, you need to first pair the MUSE 2 with your computer. 
 python3 muse-lsl.py --name <YOUR_DEVICE_NAME>
 ```
 
-The `<YOUR_DEVICE_NAME>` is the name of your MUSE 2. This information could be found on the box of your MUSE 2. For example, my MUSE 2's name is `Muse-E02A`. This command will establish a connection between your computer and the MUSE 2. Closing this window will result in a disconnection. If the program is complaining about not finding the MUSE 2: try restarting the MUSE 2, double-check the address, and make sure the MUSE 2 is not connected to any other devices.
+The `<YOUR_DEVICE_NAME>` is the name of your MUSE 2. This information could be found on the box of your MUSE 2. For example, our MUSE 2's name is `Muse-E02A`. This command will establish a connection between your computer and the MUSE 2. Closing this window will result in a disconnection. If the program is complaining about not finding the MUSE 2: try restarting the MUSE 2, double-check the address, and make sure the MUSE 2 is not connected to any other devices.
 
 #### Under the Hood of `muse-lsl.py`
 
@@ -88,7 +104,7 @@ Then, we need to construct a new [`StreamInfo`](https://labstreaminglayer.readth
 info = info = StreamInfo(name='Muse', type='EEG', channel_count=5, nominal_srate=256, channel_format='float32', source_id=options.name)  # name is command line argument, e.g. Muse-E02A
 ```
 
-The `name` can actually be anything you want. It is just used to find the stream on the LSL network. The `type` is the type of data we are streaming. Refer to this page to see [all the available types](https://github.com/sccn/xdf/wiki/Meta-Data). We have 5 channels. All have a sampling rate of 256 Hz, and the format is `float32`.
+The `name` can actually be anything you want. It is just used to find the stream on the LSL network. The `type` is the type of data we are streaming. Refer to this page to see [all the available types](https://github.com/sccn/xdf/wiki/Meta-Data). We have 5 channels. All have a sampling rate of 256 Hz, and the format is `float32`. `source_id` is required. It is the unique identifier of the device.
 
 The `StreamInfo` object provides a `desc()` method that allow the user to extend the metadata of the stream, so that other programs can understand the data. For example, we can add the manufacturer of the device and the labels of the channels.
 
@@ -147,7 +163,7 @@ def process(data, timestamps):
 
 ### Step 2. "Hello World": Data Streaming
 
-In Step 1, we established a connection between the MUSE 2 and the computer. Specifically, we put the EEG data from our MUSE 2 on the LSL network. Now, we need to fetch the data from the LSL network. We will use the `pylsl` library again.
+In Step 1, we established a connection between the MUSE 2 and the computer. Specifically, we put the EEG data from our MUSE 2 on the LSL network. Now, as a "Hello World" exercise,let's see how we can fetch the data from the LSL network. We will use the `pylsl` library again.
 
 Open a new terminal window and run the following command:
 
@@ -165,10 +181,11 @@ We are plotting the left ear (TP9) EEG data. The left plot shows the raw signal,
 
 ##### Step 2.1 Connecting to the EEG stream
 
-We will first import the LSL library.
+We will first import the LSL library as well as the `bci_workshop_tools` library provided by NeuroTechX.
 
 ```python
 from pylsl import StreamInlet, resolve_byprop
+import bci_workshop_tools as BCIw
 ```
 
 The `resolve_byprop()` function will find the stream on the LSL network. We will use the `name` property to find the stream. Since there is only one stream on the network, we can just use the first element of the list returned by `resolve_byprop()`.
@@ -188,13 +205,211 @@ We need to apply a [time correction](https://labstreaminglayer.readthedocs.io/in
 _ = inlet.time_correction()
 ```
 
-Of course, we have access to the `StreamInfo` object that we defined in `muse-lsl.py`. We can use it to get the sampling rate of the data.
+Of course, we have access to the `StreamInfo` object that we defined in `muse-lsl.py`. We can use it to get the sampling rate and the channel labels.
 
 ```python
 info = inlet.info()
-fs = int(info.nominal_srate())  # 256 Hz
+# Get the stream info and description
+info = inlet.info()
+desc = info.desc()
+fs = int(info.nominal_srate())
+
+# Get the channels names
+labels = []
+channels = desc.child("channels").first_child()
+while not channels.empty():
+    labels.append(channels.child_value("label"))
+    channels = channels.next_sibling()
 ```
 
 ##### Step 2.2 Set plot parameters
 
+Let's set some parameters for plotting. We are using a 15-second buffer, and we will plot the data in 1-second epochs. We will also set the overlap between two consecutive epochs to be 0.8 seconds. This means that the start of each epoch will be shifted by 0.2 seconds.
 
+```python
+buffer_length = 15      # in seconds
+epoch_length = 1        # in seconds
+overlap_length = 0.8    # overlap between two consecutive epochs (in seconds)
+
+# Amount to 'shift' the start of each next consecutive epoch
+shift_length = epoch_length - overlap_length
+
+# Index of the channel (electrode) to be used
+index_channel = [0]
+ch_names = [labels[i] for i in index_channel]
+
+# Get names of band frequencies (e.g., 'alpha', 'beta')
+feature_names = BCIw.get_feature_names(ch_names)
+```
+
+The "features" here are the frequency bands. We will use the `get_feature_names()` function provided by NeuroTechX to get the names of the frequency bands.
+
+##### Step 2.3 Initialize the buffer
+
+We need to initialize the buffer for storing the data. We will use a 2D NumPy array. The first dimension is the number of samples, and the second dimension is the number of channels. We will also initialize the filter state for the notch filter.
+
+We are making two plots: one for the raw EEG data and one for the frequency bands. We will use the `DataPlotter` class provided by NeuroTechX to make the plots. The `DataPlotter` class is a wrapper around the `matplotlib` library. It is a convenient way to plot data in real-time.
+
+##### Step 2.4 Fetch the data
+
+We then enter a while loop to fetch the data from the LSL network. We will fetch the data in chunks of 12 samples. We will also update the EEG buffer and the feature buffer. We will get into the details of feature extraction in Step 3.
+
+```python
+print('Press Ctrl-C in the console to break the while loop.')
+
+try:
+    while True:
+
+        """ 4.1 ACQUIRE DATA """
+        # Obtain EEG data from the LSL stream
+        eeg_data, timestamp = inlet.pull_chunk(
+            timeout=1, max_samples=int(shift_length * fs))
+
+        # Only keep the channel we're interested in
+        ch_data = np.array(eeg_data)[:, index_channel]
+
+        # Update EEG buffer
+        eeg_buffer, filter_state = BCIw.update_buffer(
+            eeg_buffer, ch_data, notch=True,
+            filter_state=filter_state)
+
+        """ 4.2 COMPUTE FEATURES """
+        # Get newest samples from the buffer
+        data_epoch = BCIw.get_last_data(eeg_buffer,
+                                        epoch_length * fs)
+
+        # Compute features
+        feat_vector = BCIw.compute_feature_vector(data_epoch, fs)
+        feat_buffer, _ = BCIw.update_buffer(feat_buffer,
+                                            np.asarray([feat_vector]))
+
+        """ 4.3 VISUALIZE THE RAW EEG AND THE FEATURES """
+        plotter_eeg.update_plot(eeg_buffer)
+        plotter_feat.update_plot(feat_buffer)
+        plt.pause(0.00001)
+
+except KeyboardInterrupt:
+    print('Closing!')
+```
+
+Notice the use of `StreamInlet.pull_chunk()`. This function will fetch the data from the LSL network. It will return a tuple of two elements: the first element is a 2D NumPy array of shape `(n_samples, n_channels)`, and the second element is a 1D NumPy array of shape `(n_samples,)` containing the timestamps of the samples. We will only keep the channel we are interested in. We will also update the EEG buffer and the feature buffer.
+
+---
+
+### Step 3. Train a Support Vector Machine (SVM) Classifier
+
+In Step 2, we learned how to fetch the data from the LSL network and break them up into features. Now, we will modify the `exercise_01.py` program to train a Support Vector Machine (SVM) classifier. 
+
+#### Under the Hood of `wake.py`
+
+We will keep the code for Step 2.1 and 2.2, but we will modify the code for Step 2.3 and 2.4.
+
+##### Step 3.3 Record traning data
+
+We found that 20 seconds of data is enough to train the classifier. Here we will use the `say` command of macOS to tell the user to open and close their eyes. We will record the data while the user is opening their eyes and while the user is closing their eyes. We will use the `epoch()` function provided by NeuroTechX to divide the data into epochs.
+
+
+##### Step 3.4 Train the classifier
+
+We will build a feature matrix for each class (open eyes and close eyes). Feature matrix is a 2D NumPy array of shape `(n_epochs, feature_vector.length)` where `n_epochs` is the number of epochs and `feature_vector.length` is the length of the feature vector. An epoch of feature vector is computed with  `compute_feature_vector()` function, and can be broken down into 7 steps:
+
+```python
+# 1. Compute the PSD
+winSampleLength, nbCh = eegdata.shape
+
+# 2. Remove offset
+dataWinCentered = eegdata - np.mean(eegdata, axis=0)
+
+# 3. Apply Hamming window
+w = np.hamming(winSampleLength)
+dataWinCenteredHam = (dataWinCentered.T*w).T
+
+# 4. Compute the FFT (Fast Fourier Transform)
+NFFT = nextpow2(winSampleLength)
+Y = np.fft.fft(dataWinCenteredHam, n=NFFT, axis=0)/winSampleLength
+PSD = 2*np.abs(Y[0:int(NFFT/2), :])
+f = fs/2*np.linspace(0, 1, int(NFFT/2))
+
+# 5. Compute the band power
+# Delta <4
+ind_delta, = np.where(f < 4)
+meanDelta = np.mean(PSD[ind_delta, :], axis=0)
+# Theta 4-8
+ind_theta, = np.where((f >= 4) & (f <= 8))
+meanTheta = np.mean(PSD[ind_theta, :], axis=0)
+# Alpha 8-12
+ind_alpha, = np.where((f >= 8) & (f <= 12))
+meanAlpha = np.mean(PSD[ind_alpha, :], axis=0)
+# Beta 12-30
+ind_beta, = np.where((f >= 12) & (f < 30))
+meanBeta = np.mean(PSD[ind_beta, :], axis=0)
+
+# 6. Concatenate features in feature vector
+feature_vector = np.concatenate((meanDelta, meanTheta, meanAlpha,
+                                    meanBeta), axis=0)
+
+# 7. Logarithmic scale
+feature_vector = np.log10(feature_vector)
+```
+
+Once we get our feature matrices, we can quickly train a support vector machine (SVM) classifier using the `train_classifier()` function:
+
+```python
+def train_classifier(feature_matrix_0, feature_matrix_1, algorithm='SVM'):
+    # Create vector Y (class labels)
+    class0 = np.zeros((feature_matrix_0.shape[0], 1))
+    class1 = np.ones((feature_matrix_1.shape[0], 1))
+
+    # Concatenate feature matrices and their respective labels
+    y = np.concatenate((class0, class1), axis=0)
+    features_all = np.concatenate((feature_matrix_0, feature_matrix_1),
+                                    axis=0)
+
+    # Normalize features columnwise
+    mu_ft = np.mean(features_all, axis=0)
+    std_ft = np.std(features_all, axis=0)
+
+    X = (features_all - mu_ft) / std_ft
+
+    # Train SVM using default parameters
+    clf = svm.SVC()
+    clf.fit(X, y)
+
+    return clf, mu_ft, std_ft
+```
+
+This function returns a trained classifier, the mean of the feature matrix, and the standard deviation of the feature matrix. We will use the mean and standard deviation to normalize the feature matrix in the future like so:
+
+```python
+# Normalize feature_vector
+x = (new_feature_vector - mu_ft) / std_ft
+y_hat = clf.predict(x)
+```
+
+---
+
+### Step 4. Controlling the TENS 3000 Unit with Arduino
+
+![servo_rotation](./images/servo_rotation.gif)
+
+#### Step 4.1 Write an Arduino Sketch
+
+We will use the Arduino Uno to control the TENS 3000 unit. The sketch will receive two numbers (separated by a comma) from the serial port because we have two dials on the TENS 3000 unit. The sketch will then use the `Servo` library to control the servo motors. Please refer to [`tens_servo.ino`](./arduino/tens_servo/tens_servo.ino) for the full code. Upload the sketch to the Arduino Uno.
+
+You can use [`test_servo.py`](./arduino/test_servo.py) to test if the servo motors are working properly.
+
+#### Step 4.2 Modify `wake.py` to send data to Arduino
+
+We will modify the `wake.py` program to send the two numbers to the Arduino Uno. We will use the `pyserial` library to communicate with the Arduino Uno. We will also use the `time` library to add a delay between each data point. This is because the Arduino Uno cannot process the data fast enough. Please refer to [`wake.py`](./python/wake.py) for the full code.
+
+---
+
+### Step 5. Putting Everything Together
+
+Lastly, we can assemble the hardware components. We will use a cardboard box to hold the TENS 3000 unit, Arduino Uno, and the servo motors, while only exposing the USB wire and the electrodes.
+
+![tens_box_assemble](./images/tens_box_assemble.gif)
+
+Now, we can connect the MUSE 2 and Arduino to the computer. We will run the `wake.py` (but remember to start the streaming first using `muse-lsl.py`). 
+
+![decision_plot](./images/decision_plot.gif)

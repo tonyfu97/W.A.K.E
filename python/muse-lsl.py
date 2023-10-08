@@ -24,9 +24,9 @@ channels = info.desc().append_child("channels")
 
 for c in ['TP9', 'AF7', 'AF8', 'TP10', 'Right AUX']:
     channels.append_child("channel") \
-        .append_child_value("label", c) \
-        .append_child_value("unit", "microvolts") \
-        .append_child_value("type", "EEG")
+            .append_child_value("label", c) \
+            .append_child_value("unit", "microvolts") \
+            .append_child_value("type", "EEG")
 
 outlet = StreamOutlet(info=info, chunk_size=CHUNK_SIZE, max_buffered=360)
 
